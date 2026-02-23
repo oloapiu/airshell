@@ -74,8 +74,11 @@ def _build_device_url() -> str:
 
 def _send_boot_webhook(config: Config, message: str):
     """Send a boot notification webhook, with retry backoff for first boot."""
-    url = config.get("gateway", {}).get("webhook_url", "")
-    token = config.get("gateway", {}).get("token", "")
+    gw = config.get("gateway", {})
+    url = gw.get("webhook_url", "")
+    token = gw.get("token", "")
+    channel = gw.get("channel")
+    to = gw.get("to")
 
     if not url:
         log.info("No webhook URL configured — skipping boot webhook")
@@ -84,7 +87,7 @@ def _send_boot_webhook(config: Config, message: str):
             _retry_boot_webhook(config, message)
         return
 
-    status = send_webhook(url, token, message)
+    status = send_webhook(url, token, message, channel=channel, to=to)
     if status == 0 and config.awaiting_setup:
         _retry_boot_webhook(config, message)
 
@@ -96,10 +99,12 @@ def _retry_boot_webhook(config: Config, message: str):
         while not _shutdown.is_set():
             # Re-check config each iteration — agent may have configured us
             if not config.awaiting_setup:
-                url = config.get("gateway", {}).get("webhook_url", "")
-                token = config.get("gateway", {}).get("token", "")
+                gw = config.get("gateway", {})
+                url = gw.get("webhook_url", "")
+                token = gw.get("token", "")
                 if url:
-                    send_webhook(url, token, message)
+                    send_webhook(url, token, message,
+                                 channel=gw.get("channel"), to=gw.get("to"))
                     return
 
             delay = _BOOT_BACKOFF[min(backoff_idx, len(_BOOT_BACKOFF) - 1)]
@@ -108,10 +113,12 @@ def _retry_boot_webhook(config: Config, message: str):
             if _shutdown.wait(delay):
                 return  # Shutting down
 
-            url = config.get("gateway", {}).get("webhook_url", "")
-            token = config.get("gateway", {}).get("token", "")
+            gw = config.get("gateway", {})
+            url = gw.get("webhook_url", "")
+            token = gw.get("token", "")
             if url:
-                status = send_webhook(url, token, message)
+                status = send_webhook(url, token, message,
+                                      channel=gw.get("channel"), to=gw.get("to"))
                 if status and status < 500:
                     return
             backoff_idx += 1
@@ -255,9 +262,13 @@ def main():
                 daemon_state["alarm_states"] = evaluator.get_alarm_states()
 
                 for event in events:
-                    url = config.get("gateway", {}).get("webhook_url", "")
-                    token = config.get("gateway", {}).get("token", "")
-                    status = send_webhook(url, token, event["message"])
+                    gw = config.get("gateway", {})
+                    url = gw.get("webhook_url", "")
+                    token = gw.get("token", "")
+                    channel = gw.get("channel")
+                    to = gw.get("to")
+                    status = send_webhook(url, token, event["message"],
+                                         channel=channel, to=to)
 
                     db.insert_alarm_event(
                         ts=ts,
