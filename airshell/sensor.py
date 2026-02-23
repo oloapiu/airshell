@@ -52,8 +52,17 @@ class SEN63CSensor:
         time.sleep(1.2)
 
         self._device.start_continuous_measurement()
-        # First reading available after ~1s
-        time.sleep(1.0)
+
+        # Poll data-ready flag instead of sleeping blind — sensor returns
+        # sentinel values (0x7FFF / 0xFFFF) until it has a valid reading.
+        for _ in range(20):
+            time.sleep(0.5)
+            try:
+                (ready,) = self._device.read_data_ready_flag()
+                if ready:
+                    break
+            except Exception:
+                pass
 
     def close(self):
         """Stop measurement and release the I2C bus."""
