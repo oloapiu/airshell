@@ -1,0 +1,3 @@
+sensirion-i2c-sen63c
+sensirion-i2c-driver
+sensirion-driver-adapters
