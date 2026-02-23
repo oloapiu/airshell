@@ -254,6 +254,7 @@ What's the next one?
 - ✅ Pi Zero 2 W running, on Tailscale
 - ✅ SEN63C sensor wired and reading — CO2, PM, temp, humidity confirmed working
 - 🐢 Turtle enclosure: concept stage
+- ✅ Full loop working — sensor → agent → Telegram confirmed
 
 ## License
 
@@ -262,3 +263,5 @@ MIT
 ## Contributing
 
 Issues and PRs welcome. If you build a feeler for a different sense, we'd love to hear about it.
+
+<!-- auto-updated -->
