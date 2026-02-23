@@ -49,7 +49,10 @@ def send_webhook(
         "Content-Type": "application/json",
     }
 
-    payload = {"message": message}
+    payload = {
+        "message": message,
+        "agentId": "main",   # route to main agent workspace where airshell skill lives
+    }
     if deliver:
         payload["deliver"] = True
     if channel:
