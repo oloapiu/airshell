@@ -1,0 +1,65 @@
+{
+  "device_id": "airshell-01",
+  "skill": "airshell",
+  "alarms": {
+    "co2_high": {
+      "measurand": "co2",
+      "operator": ">",
+      "raise": 800,
+      "clear": 700,
+      "smoothing_min": 5
+    },
+    "pm25_high": {
+      "measurand": "pm25",
+      "operator": ">",
+      "raise": 35.5,
+      "clear": 25,
+      "smoothing_min": 2
+    },
+    "temp_high": {
+      "measurand": "temp",
+      "operator": ">",
+      "raise": 26,
+      "clear": 24,
+      "smoothing_min": 10
+    },
+    "temp_low": {
+      "measurand": "temp",
+      "operator": "<",
+      "raise": 18,
+      "clear": 20,
+      "smoothing_min": 10
+    },
+    "humidity_high": {
+      "measurand": "humidity",
+      "operator": ">",
+      "raise": 60,
+      "clear": 55,
+      "smoothing_min": 10
+    },
+    "humidity_low": {
+      "measurand": "humidity",
+      "operator": "<",
+      "raise": 30,
+      "clear": 35,
+      "smoothing_min": 10
+    }
+  },
+  "notifications": {
+    "default": {
+      "on_raise": true,
+      "on_clear": true,
+      "repeat": {
+        "enabled": true,
+        "mode": "escalating",
+        "intervals_min": [30, 15, 10, 5]
+      },
+      "agent_message": ""
+    },
+    "overrides": {}
+  },
+  "gateway": {
+    "webhook_url": "",
+    "token": ""
+  }
+}

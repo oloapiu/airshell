@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AirShell Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.min.css">
+<style>
+  :root {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --green: #3fb950;
+    --red: #f85149;
+    --orange: #d29922;
+    --blue: #58a6ff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    padding: 16px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 1.4rem; font-weight: 600; }
+  header .status {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-left: auto;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .card .label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .card .value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .card .unit {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+  .card.alarm-raised { border-color: var(--red); }
+  .card.alarm-raised .value { color: var(--red); }
+  .card.normal .value { color: var(--green); }
+
+  .chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+  .chart-container h3 {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  /* uPlot overrides for dark theme */
+  .uplot .u-title { color: var(--text) !important; }
+  .uplot .u-legend th, .uplot .u-legend td { color: var(--text-dim) !important; }
+  .uplot .u-series:first-child .u-label { display: none; }
+
+  .footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    margin-top: 24px;
+    padding-bottom: 16px;
+  }
+  @media (max-width: 600px) {
+    body { padding: 10px; }
+    .card .value { font-size: 1.5rem; }
+    .cards { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AirShell</h1>
+  <span class="status" id="status">Loading...</span>
+</header>
+
+<div class="cards">
+  <div class="card normal" id="card-co2">
+    <div class="label">CO&#8322;</div>
+    <div class="value" id="val-co2">---</div>
+    <div class="unit">ppm</div>
+  </div>
+  <div class="card normal" id="card-pm25">
+    <div class="label">PM2.5</div>
+    <div class="value" id="val-pm25">---</div>
+    <div class="unit">&micro;g/m&sup3;</div>
+  </div>
+  <div class="card normal" id="card-temp">
+    <div class="label">Temperature</div>
+    <div class="value" id="val-temp">---</div>
+    <div class="unit">&deg;C</div>
+  </div>
+  <div class="card normal" id="card-humidity">
+    <div class="label">Humidity</div>
+    <div class="value" id="val-humidity">---</div>
+    <div class="unit">%RH</div>
+  </div>
+</div>
+
+<div class="chart-container">
+  <h3>CO&#8322; (ppm)</h3>
+  <div id="chart-co2"></div>
+</div>
+<div class="chart-container">
+  <h3>PM2.5 (&micro;g/m&sup3;)</h3>
+  <div id="chart-pm25"></div>
+</div>
+<div class="chart-container">
+  <h3>Temperature (&deg;C)</h3>
+  <div id="chart-temp"></div>
+</div>
+<div class="chart-container">
+  <h3>Humidity (%RH)</h3>
+  <div id="chart-humidity"></div>
+</div>
+
+<div class="footer">
+  AirShell &mdash; auto-refreshes every 30s
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.iife.min.js"></script>
+<script>
+(function() {
+  "use strict";
+
+  // Chart instances — destroyed and recreated on data refresh
+  var charts = {};
+
+  // Colors
+  var COLORS = {
+    co2:      "#58a6ff",
+    pm25:     "#d2a8ff",
+    temp:     "#f0883e",
+    humidity: "#3fb950",
+    threshold:"#f8514966",
+  };
+
+  // Chart config per measurand
+  var CHART_DEFS = [
+    { key: "co2",      el: "chart-co2",      label: "CO\u2082",   color: COLORS.co2 },
+    { key: "pm25",     el: "chart-pm25",      label: "PM2.5",     color: COLORS.pm25 },
+    { key: "temp",     el: "chart-temp",      label: "Temp",      color: COLORS.temp },
+    { key: "humidity", el: "chart-humidity",   label: "Humidity",  color: COLORS.humidity },
+  ];
+
+  // Map alarm measurands to card keys
+  var MEASURAND_MAP = {
+    co2: "co2", pm25: "pm25", temp: "temp", humidity: "humidity"
+  };
+
+  function chartWidth() {
+    // Fit to container minus padding
+    return Math.min(window.innerWidth - 56, 1200);
+  }
+
+  function makeThresholdPlugin(thresholds) {
+    // Draw horizontal lines for alarm thresholds
+    return {
+      hooks: {
+        draw: [function(u) {
+          var ctx = u.ctx;
+          ctx.save();
+          for (var i = 0; i < thresholds.length; i++) {
+            var val = thresholds[i];
+            var y = u.valToPos(val, "y", true);
+            if (y < u.bbox.top || y > u.bbox.top + u.bbox.height) continue;
+            ctx.strokeStyle = COLORS.threshold;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(u.bbox.left, y);
+            ctx.lineTo(u.bbox.left + u.bbox.width, y);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }]
+      }
+    };
+  }
+
+  function buildChart(def, ts, values, thresholds) {
+    var el = document.getElementById(def.el);
+    el.innerHTML = "";
+
+    var w = chartWidth();
+    var h = 200;
+
+    var plugins = [];
+    if (thresholds && thresholds.length) {
+      plugins.push(makeThresholdPlugin(thresholds));
+    }
+
+    var opts = {
+      width: w,
+      height: h,
+      plugins: plugins,
+      cursor: { show: true },
+      axes: [
+        {
+          stroke: "#8b949e",
+          grid: { stroke: "#30363d44" },
+          ticks: { stroke: "#30363d44" },
+          values: function(u, vals) {
+            return vals.map(function(v) {
+              var d = new Date(v * 1000);
+              return d.getHours().toString().padStart(2,"0") + ":" +
+                     d.getMinutes().toString().padStart(2,"0");
+            });
+          }
+        },
+        {
+          stroke: "#8b949e",
+          grid: { stroke: "#30363d44" },
+          ticks: { stroke: "#30363d44" },
+        }
+      ],
+      series: [
+        {},
+        {
+          label: def.label,
+          stroke: def.color,
+          width: 2,
+          fill: def.color + "18",
+        }
+      ],
+    };
+
+    var data = [ts, values];
+    charts[def.key] = new uPlot(opts, data, el);
+  }
+
+  function getThresholds(alarmsCfg, measurand) {
+    var vals = [];
+    if (!alarmsCfg) return vals;
+    var keys = Object.keys(alarmsCfg);
+    for (var i = 0; i < keys.length; i++) {
+      var a = alarmsCfg[keys[i]];
+      if (a.measurand === measurand) {
+        if (a.raise != null) vals.push(a.raise);
+        if (a.clear != null) vals.push(a.clear);
+      }
+    }
+    return vals;
+  }
+
+  function updateCards(data, alarmStates) {
+    var cardDefs = [
+      { key: "co2",      id: "card-co2",      valId: "val-co2",      fmt: function(v){return Math.round(v);} },
+      { key: "pm25",     id: "card-pm25",      valId: "val-pm25",     fmt: function(v){return v.toFixed(1);} },
+      { key: "temp",     id: "card-temp",      valId: "val-temp",     fmt: function(v){return v.toFixed(1);} },
+      { key: "humidity", id: "card-humidity",   valId: "val-humidity", fmt: function(v){return v.toFixed(1);} },
+    ];
+
+    for (var i = 0; i < cardDefs.length; i++) {
+      var cd = cardDefs[i];
+      var arr = data[cd.key];
+      var val = null;
+      // Find last non-null value
+      if (arr) {
+        for (var j = arr.length - 1; j >= 0; j--) {
+          if (arr[j] != null) { val = arr[j]; break; }
+        }
+      }
+
+      var valEl = document.getElementById(cd.valId);
+      var cardEl = document.getElementById(cd.id);
+
+      if (val != null) {
+        valEl.textContent = cd.fmt(val);
+      } else {
+        valEl.textContent = "---";
+      }
+
+      // Check if any alarm for this measurand is raised
+      var raised = false;
+      if (alarmStates) {
+        var keys = Object.keys(alarmStates);
+        for (var k = 0; k < keys.length; k++) {
+          if (keys[k].indexOf(cd.key) !== -1 && alarmStates[keys[k]]) {
+            raised = true;
+            break;
+          }
+        }
+      }
+      cardEl.className = "card " + (raised ? "alarm-raised" : "normal");
+    }
+  }
+
+  function refresh() {
+    fetch("/api/readings?last=2h")
+      .then(function(r) { return r.json(); })
+      .then(function(resp) {
+        var data = resp.data;
+        var alarms = resp.alarms;
+        var alarmStates = resp.alarm_states;
+
+        if (!data || !data.ts || data.ts.length === 0) {
+          document.getElementById("status").textContent = "No data yet";
+          return;
+        }
+
+        updateCards(data, alarmStates);
+
+        for (var i = 0; i < CHART_DEFS.length; i++) {
+          var def = CHART_DEFS[i];
+          var thresholds = getThresholds(alarms, def.key);
+          buildChart(def, data.ts, data[def.key], thresholds);
+        }
+
+        var lastTs = data.ts[data.ts.length - 1];
+        var ago = Math.round((Date.now() / 1000 - lastTs) / 60);
+        var statusText = ago <= 1 ? "Live" : ago + " min ago";
+        document.getElementById("status").textContent =
+          statusText + " \u00b7 " + data.ts.length + " readings";
+      })
+      .catch(function(err) {
+        document.getElementById("status").textContent = "Error: " + err.message;
+      });
+  }
+
+  // Initial load + auto-refresh
+  refresh();
+  setInterval(refresh, 30000);
+
+  // Resize charts on window resize
+  var resizeTimer;
+  window.addEventListener("resize", function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      var keys = Object.keys(charts);
+      for (var i = 0; i < keys.length; i++) {
+        charts[keys[i]].setSize({ width: chartWidth(), height: 200 });
+      }
+    }, 200);
+  });
+})();
+</script>
+</body>
+</html>
