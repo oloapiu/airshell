@@ -237,9 +237,13 @@ def main():
                 pm4=avg["pm4"], pm10=avg["pm10"],
                 temp=avg["temp"], humidity=avg["humidity"],
             )
+            def _fmt(v, fmt):
+                return format(v, fmt) if v is not None else "---"
+
             log.info(
-                "Stored 1-min avg: CO2=%.0f PM2.5=%.1f T=%.1f H=%.1f",
-                avg["co2"], avg["pm25"], avg["temp"], avg["humidity"],
+                "Stored 1-min avg: CO2=%s PM2.5=%s T=%s H=%s",
+                _fmt(avg["co2"], ".0f"), _fmt(avg["pm25"], ".1f"),
+                _fmt(avg["temp"], ".1f"), _fmt(avg["humidity"], ".1f"),
             )
 
             # Evaluate alarms (only if we have config with alarms)
@@ -280,12 +284,28 @@ def main():
 
 
 def _average_samples(samples: list[dict]) -> dict:
-    """Average a list of sensor reading dicts."""
+    """Average a list of sensor reading dicts, dropping sentinel/not-ready values.
+
+    The SEN63C returns sentinel values while warming up:
+      - CO2: 32767 (0x7FFF) — SCD41 needs ~15s after start_measurement
+      - PM:  6553.5 (0xFFFF/10) — rare but possible on first read
+    These are excluded from averages so they never pollute stored data.
+    """
+    # Sentinel values returned by SEN63C when data isn't ready yet
+    _SENTINEL = {
+        "co2": 32767,
+        "pm1": 6553.5, "pm25": 6553.5, "pm4": 6553.5, "pm10": 6553.5,
+    }
+
     keys = ["co2", "pm1", "pm25", "pm4", "pm10", "temp", "humidity"]
     avg = {}
     for key in keys:
-        values = [s[key] for s in samples if s.get(key) is not None]
-        avg[key] = sum(values) / len(values) if values else 0.0
+        sentinel = _SENTINEL.get(key)
+        values = [
+            s[key] for s in samples
+            if s.get(key) is not None and s[key] != sentinel
+        ]
+        avg[key] = sum(values) / len(values) if values else None
     return avg
 
 
