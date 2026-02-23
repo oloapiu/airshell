@@ -122,7 +122,7 @@ def _retry_boot_webhook(config: Config, message: str):
 
 def _start_flask(config: Config, db: Database, daemon_state: dict):
     """Start the Flask API server in a background thread."""
-    create_app(config, db, daemon_state)
+    app = create_app(config, db, daemon_state)
 
     def _run():
         # Suppress Flask's default startup banner in production
