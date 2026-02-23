@@ -201,7 +201,7 @@
             var y = u.valToPos(val, "y", true);
             if (y < u.bbox.top || y > u.bbox.top + u.bbox.height) continue;
             ctx.strokeStyle = COLORS.threshold;
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 2.5;
             ctx.setLineDash([6, 4]);
             ctx.beginPath();
             ctx.moveTo(u.bbox.left, y);
@@ -248,6 +248,18 @@
           stroke: "#8b949e",
           grid: { stroke: "#30363d44" },
           ticks: { stroke: "#30363d44" },
+          range: function(u, dataMin, dataMax) {
+            var lo = dataMin, hi = dataMax;
+            if (thresholds && thresholds.length) {
+              for (var t = 0; t < thresholds.length; t++) {
+                if (thresholds[t] < lo) lo = thresholds[t];
+                if (thresholds[t] > hi) hi = thresholds[t];
+              }
+            }
+            var span = hi - lo;
+            if (span < 1) span = 1;
+            return [lo - span * 0.1, hi + span * 0.1];
+          },
         }
       ],
       series: [
