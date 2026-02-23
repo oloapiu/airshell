@@ -2,10 +2,14 @@
 
 Fire-and-forget POST to the agent gateway. Runs with a short timeout so the
 main loop is never blocked by slow or unreachable endpoints.
+
+Auth: token is sent as `Authorization: Bearer <token>` header (per OpenClaw docs).
+Delivery: pass channel/to so the agent routes the response back to the user.
 """
 
 import logging
 import threading
+from typing import Optional
 
 import requests
 
@@ -15,13 +19,23 @@ log = logging.getLogger(__name__)
 _TIMEOUT_S = 10
 
 
-def send_webhook(url: str, token: str, message: str) -> int:
-    """POST a message to the gateway webhook endpoint.
+def send_webhook(
+    url: str,
+    token: str,
+    message: str,
+    deliver: bool = True,
+    channel: Optional[str] = None,
+    to: Optional[str] = None,
+) -> int:
+    """POST a message to the gateway /hooks/agent endpoint.
 
     Args:
-        url: Full URL (e.g. http://localhost:3456/hooks/agent)
-        token: Authentication token for the gateway
-        message: The message string to send
+        url:     Full URL (e.g. https://<tailnet-host>/hooks/agent)
+        token:   Gateway hook token (sent as Authorization Bearer header)
+        message: The alarm/event message for the agent to process
+        deliver: If True, agent response is delivered to the messaging channel
+        channel: Delivery channel (e.g. "telegram"). Uses gateway default if None.
+        to:      Recipient ID (e.g. Telegram chat ID). Uses last recipient if None.
 
     Returns:
         HTTP status code, or 0 on connection failure.
@@ -30,12 +44,21 @@ def send_webhook(url: str, token: str, message: str) -> int:
         log.warning("Webhook URL not configured — skipping")
         return 0
 
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {"message": message}
+    if deliver:
+        payload["deliver"] = True
+    if channel:
+        payload["channel"] = channel
+    if to:
+        payload["to"] = to
+
     try:
-        resp = requests.post(
-            url,
-            json={"message": message, "token": token},
-            timeout=_TIMEOUT_S,
-        )
+        resp = requests.post(url, json=payload, headers=headers, timeout=_TIMEOUT_S)
         if resp.status_code >= 400:
             log.warning("Webhook returned %d: %s", resp.status_code, resp.text[:200])
         else:
@@ -46,18 +69,29 @@ def send_webhook(url: str, token: str, message: str) -> int:
         return 0
 
 
-def send_webhook_async(url: str, token: str, message: str,
-                       callback=None):
+def send_webhook_async(
+    url: str,
+    token: str,
+    message: str,
+    deliver: bool = True,
+    channel: Optional[str] = None,
+    to: Optional[str] = None,
+    callback=None,
+):
     """Send a webhook in a background thread (non-blocking).
 
     Args:
-        url: Full URL for the webhook endpoint
-        token: Authentication token
-        message: The message to send
+        url:      Full URL for the webhook endpoint
+        token:    Gateway hook token
+        message:  The message to send
+        deliver:  Forward agent response to messaging channel
+        channel:  Delivery channel override
+        to:       Recipient ID override
         callback: Optional callable(status_code) called after delivery
     """
     def _deliver():
-        status = send_webhook(url, token, message)
+        status = send_webhook(url, token, message, deliver=deliver,
+                              channel=channel, to=to)
         if callback:
             callback(status)
 
