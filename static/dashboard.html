@@ -230,7 +230,10 @@
       width: w,
       height: h,
       plugins: plugins,
-      cursor: { show: true },
+      cursor: {
+        show: true,
+        sync: { key: "airshell-sync" },
+      },
       axes: [
         {
           stroke: "#8b949e",
@@ -263,7 +266,15 @@
         }
       ],
       series: [
-        {},
+        {
+          label: "Time",
+          value: function(u, ts) {
+            if (ts == null) return "—";
+            var d = new Date(ts * 1000);
+            return d.getHours().toString().padStart(2,"0") + ":" +
+                   d.getMinutes().toString().padStart(2,"0");
+          },
+        },
         {
           label: def.label,
           stroke: def.color,
