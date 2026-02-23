@@ -252,7 +252,7 @@ What's the next one?
 ## Status
 
 - ✅ Pi Zero 2 W running, on Tailscale
-- ⏳ SEN63C sensor arriving Feb 25
+- ✅ SEN63C sensor wired and reading — CO2, PM, temp, humidity confirmed working
 - 🐢 Turtle enclosure: concept stage
 
 ## License
