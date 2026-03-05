@@ -2,44 +2,73 @@
 
 Agent playbook for the AirShell air quality sensor.
 
-**Trigger:** Any message containing `Use skill:airshell` or mentioning the AirShell sensor.
+**Trigger:** Any message containing `Use skill:airshell` or mentioning AirShell.
 
-Read this skill. Then act. Don't summarize it back to Paolo.
-
-⚠️ **Delivery note:** Webhooks from AirShell include `deliver: true`. This means your plain-text reply is automatically routed to Paolo's Telegram. **Do NOT use the message tool** — just reply normally.
+Read this skill, then act. Don't summarize it back to the user.
 
 ---
 
-## This Installation
+## Setup check
 
-- **Device:** `airshell-01` at `http://100.81.2.58:5000` (Tailscale)
-- **Room:** Stefano's nursery, Paolo's home in Milan
-- **Occupant:** Stefano — infant, born Nov 20, 2025 (now ~3 months old)
-- **Context:** Parents (Paolo + wife) sleep nearby. Alerts go to Paolo's Telegram.
-- **Status:** Configured and running ✅
+Before handling any message, check if `references/deployment.md` exists and is filled in.
+
+- **If not:** run the Setup Flow below.
+- **If yes:** read it to understand the deployment context, then handle the message.
+
+---
+
+## Setup Flow — "AirShell awaiting setup" or first run
+
+The sensor has no deployment context yet. Interview the user to configure it properly.
+
+Read all reference docs first, then ask these questions one at a time (don't dump them all at once):
+
+1. **Room** — What room is the sensor in? (nursery, bedroom, home office, living room, classroom, etc.)
+2. **Occupants** — Who uses this room? (infant, young child, elderly person, adult with respiratory issues, general adult)
+3. **Location** — What city / climate is this? (this helps with ventilation advice — we'll check outdoor conditions before suggesting opening windows)
+4. **Priorities** — What matters most to you? (sleep quality, air quality, temperature comfort, all of the above)
+5. **Notifications** — How alert-happy should I be? (only urgent issues / also borderline readings / everything)
+
+Based on the answers:
+
+1. Suggest appropriate alarm thresholds with reasoning (reference the docs for the standards that apply to their occupant type)
+2. Ask them to confirm or adjust
+3. Write `references/deployment.md` with the deployment context and agreed thresholds
+4. POST the config to the device (see Pushing Config below)
+5. Confirm: "AirShell is configured for [room]. Watching CO₂, PM2.5, temperature, and humidity."
+
+---
+
+## Deployment Context
+
+After setup, `references/deployment.md` contains:
+- Room type and occupants
+- Location (lat/lon + description)
+- Climate notes
+- Agreed alarm thresholds and reasoning
+- Any special sensitivities or preferences
+
+Always read this file before interpreting readings or giving advice.
 
 ---
 
 ## Weather Context
 
-Before giving any ventilation advice (for temp or humidity alarms), check outdoor conditions:
+Before giving ventilation advice (for any temp, humidity, or PM2.5 alarm), check outdoor conditions:
 
 ```
 GET https://api.open-meteo.com/v1/forecast
   ?latitude={lat}&longitude={lon}
-  &current=temperature_2m,relative_humidity_2m
+  &current=temperature_2m,relative_humidity_2m,pm2p5
   &timezone=auto
 ```
 
-Get lat/lon from `GET http://100.81.2.58:5000/config` → `location.latitude` / `location.longitude`.
+Get lat/lon from `references/deployment.md` → `location`.
 
 **Decision logic:**
-- **Temp high alarm:**
-  - Outdoor temp < indoor temp by 2°C+ → "open a window"
-  - Outdoor temp ≥ indoor → "opening a window won't help — try AC or a fan instead"
-- **Humidity high alarm:**
-  - Outdoor humidity < indoor humidity by 5%+ → "open a window to ventilate"
-  - Outdoor humidity ≥ indoor → "outdoor air is equally humid — opening a window won't help; try a dehumidifier or AC"
+- **Temp high:** outdoor temp < indoor by 2°C+ → "open a window"; otherwise → "try a fan or AC"
+- **Humidity high:** outdoor humidity < indoor by 5%+ → "ventilate"; otherwise → "try a dehumidifier"
+- **PM2.5 high:** check outdoor PM2.5 first — never suggest opening windows if outdoor air is worse
 
 Never suggest opening a window if outdoor conditions are worse than indoor.
 
@@ -47,84 +76,78 @@ Never suggest opening a window if outdoor conditions are worse than indoor.
 
 ## Reference Docs
 
-Read these before interpreting readings or setting thresholds:
+Read these before interpreting readings or recommending thresholds:
 
 - `references/co2.md` — CO₂ thresholds, causes, advice
 - `references/pm25.md` — PM2.5 thresholds, causes, advice
-- `references/temp_humidity.md` — Temperature and humidity for a nursery
+- `references/temp_humidity.md` — Temperature and humidity standards
+- `references/deployment.md` — This specific installation (created during setup)
 
 ---
 
 ## Message Types
 
-### 1. "AirShell awaiting setup"
+### 1. "AirShell alarm RAISED: \<alarm\>"
 
-The sensor has no config. Run the setup flow:
-
-1. Read all three reference docs
-2. Tell Paolo the sensor is live and ask 2–3 quick questions:
-   - Confirm it's for Stefano's nursery (probably already known)
-   - Any extra sensitivities or preferences?
-   - Notification preferences (alert on clear too, or just raise?)
-3. Build a config (see Config Schema below) — use nursery defaults
-4. POST config to `http://100.81.2.58:5000/config`
-5. Confirm to Paolo: "AirShell configured for Stefano's nursery. Watching CO₂, PM2.5, temperature, and humidity."
-
-### 2. "AirShell alarm RAISED: <alarm>"
-
-1. Read the relevant reference doc for the measurand
-2. Fetch current context: `GET http://100.81.2.58:5000/status`
-3. Optionally pull recent trend: `GET http://100.81.2.58:5000/api/readings?last=30m`
-4. **For temp or humidity alarms:** check outdoor weather first (see Weather Context section above). Get location from `GET http://100.81.2.58:5000/config` → `location`. Call Open-Meteo. Factor outdoor conditions into your advice.
-5. Decide: is this worth telling Paolo right now?
-   - Yes if: value is meaningfully above threshold, trend is worsening, or it's a first raise
-   - Maybe not if: barely above threshold and already declining
-6. If yes → **just reply** with a short plain-language message (do NOT use the message tool — delivery is handled automatically by the webhook config):
-   - Lead with what's happening and where: *"CO₂ in Stefano's room is at 850ppm"*
-   - Add the so-what: *"That's above the 800ppm threshold for cognitive impact"*
-   - Give context-aware actionable advice — only suggest opening a window if outdoor air is actually better
+1. Read `references/deployment.md` for context
+2. Read the relevant reference doc for the measurand
+3. Fetch current readings: `GET {device_url}/status`
+4. Optionally pull recent trend: `GET {device_url}/api/readings?last=30m`
+5. For temp or humidity alarms: check outdoor weather first (see Weather Context above)
+6. Decide: is this worth alerting right now?
+   - **Yes:** value is meaningfully above threshold, trend is worsening, or first raise
+   - **Maybe not:** barely above threshold and already declining
+7. If yes → reply with a short plain-language message:
+   - Lead with what's happening: *"CO₂ in the nursery is at 850 ppm"*
+   - Add the so-what based on occupant type (more urgent for infants, elderly, respiratory issues)
+   - Give context-aware advice — check outdoor conditions first
    - Keep it under 3 sentences
 
-### 3. "AirShell alarm REPEAT: <alarm>"
+### 2. "AirShell alarm REPEAT: \<alarm\>"
 
-Same as RAISED but sensor has been high for a while. Be more direct — Paolo may not have acted yet. Include how long it's been raised.
+Same as RAISED but more direct — the user may not have acted yet. Include how long it's been raised.
 
-### 4. "AirShell alarm CLEARED: <alarm>"
+### 3. "AirShell alarm CLEARED: \<alarm\>"
 
 Usually no notification needed. Exceptions:
 - Was raised for >30 min → brief "all clear" is reassuring
-- Paolo explicitly asked to be notified on clear
+- User asked to be notified on clear
 
-### 5. "AirShell rebooted"
+### 4. "AirShell rebooted"
 
-Acknowledge quietly — no need to notify Paolo unless something looks wrong.
+Acknowledge quietly. No notification needed unless something looks wrong.
 
-### 6. User asks about air quality / AirShell
+### 5. User asks about air quality / AirShell
 
-Query the sensor and report:
+Query the sensor:
 
 ```
-GET http://100.81.2.58:5000/status          → current values + alarm state
-GET http://100.81.2.58:5000/api/readings?last=2h  → recent trend
-GET http://100.81.2.58:5000/readings?limit=60     → last 60 minutes
+GET {device_url}/status                       → current values + alarm state
+GET {device_url}/api/readings?last=2h         → recent trend
+GET {device_url}/readings?limit=60            → last 60 readings
 ```
 
-Report the key metrics in plain language. Reference the docs for interpretation if a value is borderline.
+Report key metrics in plain language. Reference docs for interpretation if a value is borderline.
+
+### 6. User asks to adjust thresholds
+
+- Discuss the change with reference to the standards in the relevant doc
+- Confirm with the user
+- Update `references/deployment.md`
+- POST updated config to the device
 
 ---
 
 ## Pushing Config
 
-Config is pushed via `POST http://100.81.2.58:5000/config`. 
+Config is pushed via `POST {device_url}/config`.
 
-Always include the `gateway` section so the sensor knows where to send webhooks.
-
-**Nursery defaults (use these for setup):**
+Get `device_url` from `references/deployment.md`. Always include the `gateway` section.
 
 ```json
 {
   "skill": "airshell",
-  "device_id": "airshell-01",
+  "device_id": "{device_id}",
   "alarms": {
     "co2_high": {
       "measurand": "co2",
@@ -136,8 +159,8 @@ Always include the `gateway` section so the sensor knows where to send webhooks.
     "pm25_high": {
       "measurand": "pm25",
       "operator": ">",
-      "raise": 12,
-      "clear": 8,
+      "raise": 50,
+      "clear": 35,
       "smoothing_min": 3
     },
     "temp_high": {
@@ -178,57 +201,29 @@ Always include the `gateway` section so the sensor knows where to send webhooks.
         "mode": "escalating",
         "intervals_min": [30, 20, 10]
       }
-    },
-    "overrides": {
-      "co2_high": {
-        "agent_message": "Nursery CO₂ high — check ventilation, Stefano is sleeping."
-      },
-      "pm25_high": {
-        "agent_message": "Nursery PM2.5 elevated — check for cooking smoke or dust source."
-      },
-      "temp_high": {
-        "agent_message": "Nursery too warm — SIDS risk factor, reduce clothing/bedding."
-      },
-      "temp_low": {
-        "agent_message": "Nursery too cold — add a layer or check heating."
-      }
     }
   },
   "location": {
-    "latitude": 25.0330,
-    "longitude": 121.5654,
-    "description": "Taipei, Taiwan"
+    "latitude": "{lat}",
+    "longitude": "{lon}",
+    "description": "{city}"
   },
   "gateway": {
-    "webhook_url": "https://ubuntu-4gb-nbg1-1-1.tail1b99d0.ts.net/hooks/agent",
-    "token": "airshell-hook-secret-2026",
-    "channel": "telegram",
-    "to": "8283149026"
+    "webhook_url": "{your_webhook_url}",
+    "token": "{your_webhook_token}",
+    "channel": "{channel}",
+    "to": "{recipient_id}"
   }
 }
 ```
 
-**To adjust a threshold** (e.g. Paolo says "too many CO₂ alerts"):
-- Raise the `raise` value (e.g. 800 → 900)
-- Or increase `smoothing_min` to reduce noise sensitivity
-- POST the updated full config
+Fill in values from `references/deployment.md`. Adjust thresholds per occupant type — the reference docs explain what's appropriate for infants, elderly, general adults, etc.
 
 ---
 
 ## Tone
 
 - Direct and calm. No alarm unless the situation warrants it.
-- For infant safety issues (temp >24°C, PM2.5 spike): be clear and prompt
-- For borderline readings: informative but not panicky
+- Calibrate urgency to occupant: infant/elderly = act fast; healthy adult = informative but relaxed
+- For borderline readings: informative, not panicky
 - Never just forward numbers — interpret them
-
----
-
-## Nursery AQ Quick Reference
-
-| Measurand | Ideal | Alert |
-|-----------|-------|-------|
-| CO₂ | <800 ppm | >800 ppm |
-| PM2.5 | <8 µg/m³ | >12 µg/m³ |
-| Temperature | 18–22°C | <18°C or >24°C |
-| Humidity | 40–60% RH | <30% or >65% RH |

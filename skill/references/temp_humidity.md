@@ -27,9 +27,15 @@
 
 **Key stat:** Overheating is an established SIDS risk factor. The NHS 16–20°C guidance is the most conservative, evidence-based official standard for infant bedrooms. Fan use above ~21°C has been associated with lower SIDS risk in research.
 
-### AirShell nursery alarm thresholds (pending Paolo confirmation)
-- **temp_high:** current raise=24°C / clear=22°C — **may be too permissive**: NHS upper safe limit is 20°C
-- **temp_low:** current raise=10°C / clear=12°C — **likely too low**: NHS "Too cold" threshold is 16°C
+### Recommended AirShell alarm thresholds
+
+| Occupant | Temp high raise | Temp high clear | Temp low raise | Temp low clear |
+|----------|----------------|----------------|----------------|----------------|
+| Infant (sleep safety) | 20°C | 18°C | 16°C | 18°C |
+| Child / elderly | 24°C | 22°C | 18°C | 20°C |
+| General adult | 26°C | 24°C | 18°C | 20°C |
+
+Note: sensor self-heats ~1–2°C above ambient — actual room temp is ~1–2°C lower than sensor reading.
 
 ### Advice
 - If too hot: fan (not pointed directly at baby), remove layers, open window if outdoor is cooler and PM2.5 is low
@@ -64,9 +70,12 @@
 | ⚠️ High | 60–70% RH | Dust mites thrive, mold risk increases |
 | ❗ Very High | >70% RH | Mold growth likely, respiratory issues |
 
-### AirShell nursery alarm thresholds (pending Paolo confirmation)
-- **humidity_high:** current raise=65% / clear=60% — **slightly permissive**: mold/dust mite territory begins at 60%; all standards agree max is 60%
-- **humidity_low:** current raise=20% / clear=25% — **too permissive**: ASHRAE minimum is 30%; dry airways for infant before alarm fires
+### Recommended AirShell alarm thresholds
+
+| Occupant | Humidity high raise | Humidity high clear | Humidity low raise | Humidity low clear |
+|----------|--------------------|--------------------|--------------------|--------------------|
+| Infant | 60% | 55% | 35% | 40% |
+| General adult | 65% | 60% | 30% | 35% |
 
 ### Advice
 - **Dry (<30%):** cool-mist humidifier (not warm-mist — burn risk near infants), bowls of water near radiators, houseplants

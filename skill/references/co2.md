@@ -40,10 +40,14 @@ Carbon dioxide concentration in parts per million (ppm). Indoors, CO₂ rises as
 - **Infants breathe ~40x/min** vs adults 12–20x/min — they cycle through stale air faster and are more exposed to poor ventilation
 - Study of 500 children's bedrooms (Klausen et al., 2023): >50% exceeded 1,000 ppm overnight with doors and windows closed; many reached 2,500 ppm by morning
 
-## AirShell alarm thresholds
-- **raise: 800 ppm** — Harvard "Green" target; appropriate for nursery given crib micro-environment effect
-- **clear: 700 ppm** — hysteresis prevents flapping on borderline readings
-- **smoothing: 5 min** — CO₂ changes over minutes, not seconds; appropriate window
+## Recommended AirShell alarm thresholds
+
+| Occupant | Raise | Clear | Smoothing | Rationale |
+|----------|-------|-------|-----------|-----------|
+| Infant / nursery | 800 ppm | 700 ppm | 5 min | Harvard "Green" target; crib micro-environment can be 4× room level |
+| Child / sensitive adult | 900 ppm | 750 ppm | 5 min | WELL v2 precondition |
+| General adult | 1,000 ppm | 800 ppm | 5 min | ASHRAE de facto comfort limit |
+| Office / productivity | 800 ppm | 700 ppm | 5 min | Harvard COGfx — cognitive impact starts here |
 
 ## Common causes of spikes
 - Door/windows closed with multiple people in the room
