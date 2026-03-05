@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 *.pyo
-*.db
 config.json
 *.log
+airshell.db
+.env
+venv/
