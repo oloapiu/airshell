@@ -206,7 +206,7 @@ Notifications are decoupled from detection. The `default` block applies to all a
 
 When an alarm fires, the sensor POSTs a natural-language message to the agent:
 
-> AirShell alarm RAISED: co2_high — CO₂ > 800 ppm (smoothed: 805, raw: 823). Note: "Nursery CO₂ — check if window needs opening." Device: airshell-01 @ http://100.81.2.58:5000. Use skill:airshell.
+> AirShell alarm RAISED: co2_high — CO₂ > 800 ppm (smoothed: 805, raw: 823). Note: "Nursery CO₂ — check if window needs opening." Device: airshell-01 @ http://<PI_TAILSCALE_IP>:5000. Use skill:airshell.
 
 The device URL is included so the agent can pull `/readings` or `/status` for context. The agent decides whether to notify the user, and how.
 

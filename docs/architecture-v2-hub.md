@@ -242,7 +242,7 @@ Standalone data service. Receives sensor readings, stores them, evaluates alarms
 # airshell-hub.yaml
 
 server:
-  host: "100.68.192.89"        # bind address (e.g. Tailscale IP)
+  host: "<VPS_TAILSCALE_IP>"        # bind address (e.g. Tailscale IP)
   port: 8080
 
 auth:
@@ -257,7 +257,7 @@ storage:
 
 gateway:
   webhook_url: "http://localhost:3456/hooks/agent"
-  webhook_token: "openclaw-hook-token"
+  webhook_token: "<YOUR_WEBHOOK_TOKEN>"
 
 stale_device:
   timeout_min: 5               # alert if no upload for this long

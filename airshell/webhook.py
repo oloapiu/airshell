@@ -51,7 +51,7 @@ def send_webhook(
 
     payload = {
         "message": message,
-        "agentId": "main",   # route to main agent workspace where airshell skill lives
+        "agentId": "main",   # route to your main agent
     }
     if deliver:
         payload["deliver"] = True

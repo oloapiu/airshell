@@ -233,13 +233,13 @@ Define what happens when alarms change state. Decoupled from detection.
 The sensor POSTs to the gateway's `/hooks/agent` endpoint. The gateway expects a `message` string, a `channel`, and a `to` — all taken from config. The sensor templates a natural-language message from its alarm state and always appends the skill hint.
 
 **Raise:**
-> [2026-02-17T15:30:00Z] AirShell alarm RAISED: co2_high — co2 > 800 ppm (smoothed: 805, raw: 823). Note: "Nursery CO₂ — check if window needs opening." Device: airshell-01 @ http://100.81.2.58:5000. Use skill:airshell.
+> [2026-02-17T15:30:00Z] AirShell alarm RAISED: co2_high — co2 > 800 ppm (smoothed: 805, raw: 823). Note: "Nursery CO₂ — check if window needs opening." Device: airshell-01 @ http://<PI_TAILSCALE_IP>:5000. Use skill:airshell.
 
 **Repeat:**
-> [2026-02-17T16:15:00Z] AirShell alarm REPEAT: co2_high — co2 still raised (smoothed: 830, raw: 845). Raised 45 min ago, repeat #2. Note: "Nursery CO₂ — check if window needs opening." Device: airshell-01 @ http://100.81.2.58:5000. Use skill:airshell.
+> [2026-02-17T16:15:00Z] AirShell alarm REPEAT: co2_high — co2 still raised (smoothed: 830, raw: 845). Raised 45 min ago, repeat #2. Note: "Nursery CO₂ — check if window needs opening." Device: airshell-01 @ http://<PI_TAILSCALE_IP>:5000. Use skill:airshell.
 
 **Clear:**
-> [2026-02-17T16:00:00Z] AirShell alarm CLEARED: co2_high — co2 back below 700 ppm (smoothed: 695, raw: 680). Was raised for 30 min (2 repeats). Device: airshell-01 @ http://100.81.2.58:5000. Use skill:airshell.
+> [2026-02-17T16:00:00Z] AirShell alarm CLEARED: co2_high — co2 back below 700 ppm (smoothed: 695, raw: 680). Was raised for 30 min (2 repeats). Device: airshell-01 @ http://<PI_TAILSCALE_IP>:5000. Use skill:airshell.
 
 The device API URL is included so the agent can pull `/readings` or `/status` for more context. "Note" is omitted if `agent_message` is empty.
 
@@ -337,6 +337,6 @@ Auto-starts on boot, restarts on crash, waits for network + Tailscale.
 
 ## Hardware Status
 
-- ✅ Pi Zero 2 W — booted, Tailscale IP `100.81.2.58`, hostname `airshell`
+- ✅ Pi Zero 2 W — booted, Tailscale IP `<PI_TAILSCALE_IP>`, hostname `airshell`
 - ⏳ SEN63C + jumper cables + power supplies — Mouser ETA Feb 25
 - Concept render: `airshell-v1.png`
