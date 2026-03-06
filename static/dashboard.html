@@ -66,6 +66,7 @@
     font-size: 0.75rem;
     color: var(--text-dim);
   }
+  .smoothing { font-size: 0.65rem; color: var(--text-dim); opacity: 0.7; }
   .card.alarm-raised { border-color: var(--red); }
   .card.alarm-raised .value { color: var(--red); }
   .card.normal .value { color: var(--green); }
@@ -114,22 +115,22 @@
   <div class="card normal" id="card-co2">
     <div class="label">CO&#8322;</div>
     <div class="value" id="val-co2">---</div>
-    <div class="unit">ppm</div>
+    <div class="unit">ppm <span class="smoothing" id="smooth-co2"></span></div>
   </div>
   <div class="card normal" id="card-pm25">
     <div class="label">PM2.5</div>
     <div class="value" id="val-pm25">---</div>
-    <div class="unit">&micro;g/m&sup3;</div>
+    <div class="unit">&micro;g/m&sup3; <span class="smoothing" id="smooth-pm25"></span></div>
   </div>
   <div class="card normal" id="card-temp">
     <div class="label">Temperature</div>
     <div class="value" id="val-temp">---</div>
-    <div class="unit">&deg;C</div>
+    <div class="unit">&deg;C <span class="smoothing" id="smooth-temp"></span></div>
   </div>
   <div class="card normal" id="card-humidity">
     <div class="label">Humidity</div>
     <div class="value" id="val-humidity">---</div>
-    <div class="unit">%RH</div>
+    <div class="unit">%RH <span class="smoothing" id="smooth-humidity"></span></div>
   </div>
 </div>
 
@@ -164,6 +165,8 @@
 
   // Colors
   var COLORS = {
+    raise:  "#f0883e",   // orange — alarm raise threshold
+    clear:  "#3fb950",   // green  — alarm clear threshold
     co2:      "#58a6ff",
     pm25:     "#d2a8ff",
     temp:     "#f0883e",
@@ -192,23 +195,27 @@
   }
 
   function makeThresholdPlugin(thresholds) {
-    // Draw horizontal lines for alarm thresholds
+    // thresholds = { raise: [...], clear: [...] }
     return {
       hooks: {
         draw: [function(u) {
           var ctx = u.ctx;
           ctx.save();
-          for (var i = 0; i < thresholds.length; i++) {
-            var val = thresholds[i];
-            var y = u.valToPos(val, "y", true);
-            if (y < u.bbox.top || y > u.bbox.top + u.bbox.height) continue;
-            ctx.strokeStyle = COLORS.threshold;
-            ctx.lineWidth = 2.5;
-            ctx.setLineDash([6, 4]);
-            ctx.beginPath();
-            ctx.moveTo(u.bbox.left, y);
-            ctx.lineTo(u.bbox.left + u.bbox.width, y);
-            ctx.stroke();
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          var groups = [{vals: thresholds.raise, color: COLORS.raise},
+                        {vals: thresholds.clear, color: COLORS.clear}];
+          for (var g = 0; g < groups.length; g++) {
+            var grp = groups[g];
+            ctx.strokeStyle = grp.color;
+            for (var i = 0; i < grp.vals.length; i++) {
+              var y = u.valToPos(grp.vals[i], "y", true);
+              if (y < u.bbox.top || y > u.bbox.top + u.bbox.height) continue;
+              ctx.beginPath();
+              ctx.moveTo(u.bbox.left, y);
+              ctx.lineTo(u.bbox.left + u.bbox.width, y);
+              ctx.stroke();
+            }
           }
           ctx.restore();
         }]
@@ -224,7 +231,7 @@
     var h = 200;
 
     var plugins = [];
-    if (thresholds && thresholds.length) {
+    if (thresholds && (thresholds.raise.length || thresholds.clear.length)) {
       plugins.push(makeThresholdPlugin(thresholds));
     }
 
@@ -255,10 +262,11 @@
           ticks: { stroke: "#30363d44" },
           range: function(u, dataMin, dataMax) {
             var lo = dataMin, hi = dataMax;
-            if (thresholds && thresholds.length) {
-              for (var t = 0; t < thresholds.length; t++) {
-                if (thresholds[t] < lo) lo = thresholds[t];
-                if (thresholds[t] > hi) hi = thresholds[t];
+            if (thresholds) {
+              var allT = thresholds.raise.concat(thresholds.clear);
+              for (var t = 0; t < allT.length; t++) {
+                if (allT[t] < lo) lo = allT[t];
+                if (allT[t] > hi) hi = allT[t];
               }
             }
             var span = hi - lo;
@@ -291,25 +299,37 @@
   }
 
   function getThresholds(alarmsCfg, measurand) {
-    var vals = [];
-    if (!alarmsCfg) return vals;
+    var result = { raise: [], clear: [] };
+    if (!alarmsCfg) return result;
     var keys = Object.keys(alarmsCfg);
     for (var i = 0; i < keys.length; i++) {
       var a = alarmsCfg[keys[i]];
       if (a.measurand === measurand) {
-        if (a.raise != null) vals.push(a.raise);
-        if (a.clear != null) vals.push(a.clear);
+        if (a.raise != null) result.raise.push(a.raise);
+        if (a.clear != null) result.clear.push(a.clear);
       }
     }
-    return vals;
+    return result;
   }
 
-  function updateCards(data, alarmStates) {
+  function getSmoothing(alarmsCfg, measurand) {
+    if (!alarmsCfg) return null;
+    var keys = Object.keys(alarmsCfg);
+    for (var i = 0; i < keys.length; i++) {
+      var a = alarmsCfg[keys[i]];
+      if (a.measurand === measurand && a.smoothing_min != null) {
+        return a.smoothing_min;
+      }
+    }
+    return null;
+  }
+
+  function updateCards(data, alarmStates, alarmsCfg) {
     var cardDefs = [
-      { key: "co2",      id: "card-co2",      valId: "val-co2",      fmt: function(v){return Math.round(v);} },
-      { key: "pm25",     id: "card-pm25",      valId: "val-pm25",     fmt: function(v){return v.toFixed(1);} },
-      { key: "temp",     id: "card-temp",      valId: "val-temp",     fmt: function(v){return v.toFixed(1);} },
-      { key: "humidity", id: "card-humidity",   valId: "val-humidity", fmt: function(v){return v.toFixed(1);} },
+      { key: "co2",      id: "card-co2",      valId: "val-co2",      smoothId: "smooth-co2",      fmt: function(v){return Math.round(v);} },
+      { key: "pm25",     id: "card-pm25",      valId: "val-pm25",     smoothId: "smooth-pm25",     fmt: function(v){return v.toFixed(1);} },
+      { key: "temp",     id: "card-temp",      valId: "val-temp",     smoothId: "smooth-temp",     fmt: function(v){return v.toFixed(1);} },
+      { key: "humidity", id: "card-humidity",   valId: "val-humidity", smoothId: "smooth-humidity", fmt: function(v){return v.toFixed(1);} },
     ];
 
     for (var i = 0; i < cardDefs.length; i++) {
@@ -344,6 +364,13 @@
         }
       }
       cardEl.className = "card " + (raised ? "alarm-raised" : "normal");
+
+      // Smoothing label
+      var smoothEl = document.getElementById(cd.smoothId);
+      if (smoothEl) {
+        var s = getSmoothing(alarmsCfg, cd.key);
+        smoothEl.textContent = s ? s + "m avg" : "";
+      }
     }
   }
 
@@ -360,7 +387,7 @@
           return;
         }
 
-        updateCards(data, alarmStates);
+        updateCards(data, alarmStates, alarms);
 
         for (var i = 0; i < CHART_DEFS.length; i++) {
           var def = CHART_DEFS[i];
