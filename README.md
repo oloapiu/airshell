@@ -142,7 +142,11 @@ OpenClaw picks up new skills automatically. No restart needed.
 
 ### 5. Connect the sensor to your agent
 
-Send your agent one message:
+Send your agent one message to install the skill:
+
+> "Install the airshell skill from ClawHub."
+
+Then, once installed:
 
 > "I set up an AirShell sensor at `http://<PI_TAILSCALE_IP>:5000`. Set it up for me."
 
