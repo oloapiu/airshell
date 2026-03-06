@@ -6,3 +6,4 @@ config.json
 airshell.db
 .env
 venv/
+skill/references/deployment.md
