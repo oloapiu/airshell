@@ -128,6 +128,10 @@ The `airshell` skill gives your agent the domain knowledge to interpret readings
 
 **Option A — via ClawHub (recommended):**
 
+Tell your agent:
+> "Install the airshell skill from ClawHub."
+
+Or run it yourself:
 ```bash
 clawhub install airshell
 ```
@@ -142,11 +146,7 @@ OpenClaw picks up new skills automatically. No restart needed.
 
 ### 5. Connect the sensor to your agent
 
-Send your agent one message to install the skill:
-
-> "Install the airshell skill from ClawHub."
-
-Then, once installed:
+Send your agent:
 
 > "I set up an AirShell sensor at `http://<PI_TAILSCALE_IP>:5000`. Set it up for me."
 
