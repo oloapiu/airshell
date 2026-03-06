@@ -34,8 +34,9 @@ Based on the answers:
 1. Suggest appropriate alarm thresholds with reasoning (reference the docs for the standards that apply to their occupant type)
 2. Ask them to confirm or adjust
 3. Write `references/deployment.md` with the deployment context and agreed thresholds
-4. POST the config to the device (see Pushing Config below)
-5. Confirm: "AirShell is configured for [room]. Watching CO₂, PM2.5, temperature, and humidity."
+4. Determine your webhook URL and token — check your own agent/gateway configuration. Do not ask the user to provide these. If you cannot determine them, tell the user: *"I need my webhook URL and token to connect to the sensor — this is how the sensor reaches me when an alarm fires. I couldn't find these automatically. You may need to check your agent's gateway config (for OpenClaw: `openclaw gateway status`)."*
+5. POST the config to the device (see Pushing Config below)
+6. Confirm: "AirShell is configured for [room]. Watching CO₂, PM2.5, temperature, and humidity."
 
 ---
 
