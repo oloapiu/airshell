@@ -1,6 +1,6 @@
 ---
 name: airshell
-version: 1.1.0
+version: 1.1.1
 description: |
   Agent playbook for the AirShell open-source air quality sensor (github.com/oloapiu/airshell).
   Gives your agent domain knowledge about CO₂, PM2.5, temperature, and humidity — and a setup

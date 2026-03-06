@@ -46,7 +46,16 @@ If you have a smart air purifier, the agent can control it automatically when PM
 - **Speed low:** fan speed when PM2.5 alarm clears (e.g. 1)
 - **Python:** path to the Python interpreter with pyvesync installed
 
-Example:
+Credentials are read from environment variables — never put passwords in the script itself:
+
+```bash
+export VESYNC_EMAIL="your@email.com"
+export VESYNC_PASSWORD="yourpassword"
+export VESYNC_DEVICE="Your Device Name"   # exactly as shown in the Levoit app
+export VESYNC_TIMEZONE="Europe/Rome"
+```
+
+Example deployment config:
 ```
 script: /path/to/skills/airshell/scripts/vesync.py
 python: /path/to/skills/airshell/scripts/venv/bin/python

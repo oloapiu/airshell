@@ -1,7 +1,15 @@
 """AirShell purifier control via pyvesync.
 
-Copy this file to vesync.py in the same directory and fill in your credentials.
-vesync.py is gitignored — your credentials stay local.
+Copy this file to vesync.py in the same directory.
+vesync.py is gitignored — it stays local.
+
+Credentials are read from environment variables — never hardcode them in this file.
+Set them in your shell profile or a .env file:
+
+    export VESYNC_EMAIL="your@email.com"
+    export VESYNC_PASSWORD="yourpassword"
+
+Or store them in a secrets file and source it before running.
 
 Requirements:
     pip install pyvesync
@@ -13,16 +21,15 @@ Usage (called by the agent via the airshell skill):
 """
 
 import asyncio
+import os
 import sys
 
 from pyvesync import VeSync
 
-# --- Fill in your details ---
-VESYNC_EMAIL = "your@email.com"
-VESYNC_PASSWORD = "yourpassword"
-DEVICE_NAME = "Your Device Name"   # exactly as shown in the Levoit/VeSync app
-TIMEZONE = "Europe/Rome"           # your local timezone
-# ----------------------------
+VESYNC_EMAIL = os.environ["VESYNC_EMAIL"]
+VESYNC_PASSWORD = os.environ["VESYNC_PASSWORD"]
+DEVICE_NAME = os.environ.get("VESYNC_DEVICE", "")  # device name as shown in the Levoit app
+TIMEZONE = os.environ.get("VESYNC_TIMEZONE", "Europe/Rome")
 
 SPEED_HIGH = 3   # speed on PM2.5 alarm raise
 SPEED_LOW  = 1   # speed on PM2.5 alarm clear
