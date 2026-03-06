@@ -185,8 +185,10 @@
   };
 
   function chartWidth() {
-    // Fit to container minus padding
-    return Math.min(window.innerWidth - 56, 1200);
+    // Fit to container width minus padding
+    var container = document.querySelector('.chart-container');
+    if (container) return container.clientWidth - 32;
+    return window.innerWidth - 56;
   }
 
   function makeThresholdPlugin(thresholds) {
