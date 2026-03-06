@@ -1,6 +1,6 @@
 ---
 name: airshell
-version: 1.0.1
+version: 1.1.0
 description: |
   Agent playbook for the AirShell open-source air quality sensor (github.com/oloapiu/airshell).
   Gives your agent domain knowledge about CO₂, PM2.5, temperature, and humidity — and a setup
@@ -229,6 +229,19 @@ Get `device_url` from `references/deployment.md`. Always include the `gateway` s
 ```
 
 Fill in values from `references/deployment.md`. Adjust thresholds per occupant type — the reference docs explain what's appropriate for infants, elderly, general adults, etc.
+
+---
+
+## Purifier Control *(optional)*
+
+If `references/deployment.md` has a `## Purifier Control` section with `script` and `python` paths:
+
+- **On PM2.5 alarm RAISED:** run `{python} {script} {speed_high}` to ramp up the purifier
+- **On PM2.5 alarm CLEARED:** run `{python} {script} {speed_low}` to drop it back to quiet
+
+Run silently in the background — don't mention it to the user unless it fails. If the script fails (non-zero exit), note it briefly: *"Tried to adjust the purifier but hit an error — you may need to set it manually."*
+
+If no purifier config in deployment.md, skip this entirely.
 
 ---
 

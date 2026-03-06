@@ -37,6 +37,25 @@
 - Alert on clear: only if raised >30 min
 - Repeat alerts: yes — escalating intervals: 30, 20, 10 min
 
+## Purifier Control *(optional)*
+
+If you have a smart air purifier, the agent can control it automatically when PM2.5 alarms fire.
+
+- **Script:** path to your local vesync.py (copy from `scripts/vesync_example.py` and fill in credentials)
+- **Speed high:** fan speed when PM2.5 alarm raises (e.g. 3)
+- **Speed low:** fan speed when PM2.5 alarm clears (e.g. 1)
+- **Python:** path to the Python interpreter with pyvesync installed
+
+Example:
+```
+script: /path/to/skills/airshell/scripts/vesync.py
+python: /path/to/skills/airshell/scripts/venv/bin/python
+speed_high: 3
+speed_low: 1
+```
+
+Leave this section out if you don't have a compatible purifier.
+
 ## Special Notes
 
 - Sensor self-heats ~1–2°C — actual room temp is ~1–2°C lower than reading

@@ -7,3 +7,5 @@ airshell.db
 .env
 venv/
 skill/references/deployment.md
+skill/scripts/vesync.py
+skill/scripts/venv/
