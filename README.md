@@ -1,3 +1,5 @@
+---
+
 # AirShell 🐢
 
 An open-source air quality sensor that gives your AI agent a sense of smell.
@@ -31,7 +33,7 @@ The agent isn't just forwarding numbers. It has domain knowledge about air quali
                     └────────────┘            └─────────────┘
 ```
 
-1. The **sensor** (a Sensirion SEN63C) measures PM1/2.5/4/10, CO₂, temperature, and humidity
+1. The **sensor** (Sensirion SEN63C) measures PM2.5, CO₂, temperature, and humidity
 2. The **Pi** samples every 2 seconds, averages into 1-minute readings, stores locally, and evaluates alarm thresholds
 3. When a threshold is crossed, the Pi sends a **webhook** to the agent
 4. The **agent** wakes up, interprets the alarm using the `airshell` skill, and decides whether and how to tell you
@@ -43,7 +45,7 @@ The agent pushes alarm configuration to the sensor. The sensor never needs to kn
 
 ## Design Philosophy
 
-**Sensors as feelers for agents.** AirShell extends an AI agent's awareness into the physical world. The sensor is a feeler — the agent is the brain.
+**Sensors as feelers for agents.** Most agent proactivity today is driven by heartbeats — scheduled check-ins that fire at regular intervals regardless of what's happening in the world. But there's nothing special about the moment a heartbeat fires. The agent has no real reason to reach out, so it either stays quiet or fills the silence with a list of reminders that starts to feel repetitive. With sensors as feelers, agents react to things actually happening. The air quality dropped. The CO₂ is rising while the baby sleeps. There's a real reason to say something — and that changes everything about how the agent feels. Not a scheduled notification. A genuine response.
 
 **Domain knowledge, not hardcoded rules.** The agent learns what CO₂ means for a nursery, what PM2.5 levels concern infants, and how to read trends. It controls alarms through understanding, not if-statements.
 
@@ -58,10 +60,10 @@ The agent pushes alarm configuration to the sensor. The sensor never needs to kn
 | Component | Part | Price | Notes |
 |-----------|------|-------|-------|
 | Compute | [Raspberry Pi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/) | ~$15 | Any Pi works, Zero 2 W is the sweet spot |
-| Sensor | [Sensirion SEN63C](https://sensirion.com/products/catalog/SEN63C) | ~$50 | All-in-one: PM, CO₂, temp, humidity over I2C |
-| Power | USB-C 5V/1A | ~$5 | Any phone charger |
+| Sensor | [Sensirion SEN63C](https://sensirion.com/products/catalog/SEN63C) | ~$50 | PM, CO₂, temp, humidity over I2C |
+| Power | [Micro USB 5V/2.5A](https://www.raspberrypi.com/products/micro-usb-power-supply/) | ~$8 | Official Pi power supply |
 
-**Total: ~$70** for a sensor that measures everything that matters for indoor air.
+**Total: ~$70.**
 
 ### Wiring
 
@@ -74,22 +76,35 @@ SDA  (pin 3)  ────►  SDA
 SCL  (pin 5)  ────►  SCL
 ```
 
-That's it. Four wires.
+Four wires.
 
 ---
 
-## Software
+## Setup
 
-### Prerequisites
-
-- A Pi running Linux with [Tailscale](https://tailscale.com/download) installed
-- An AI agent that can receive webhooks (we use [OpenClaw](https://github.com/openclaw/openclaw) with the `airshell` skill)
-- Python 3
-
-### Install
+### 1. Enable I2C on the Pi
 
 ```bash
-ssh pi@<tailscale-ip>
+sudo raspi-config
+# Interface Options → I2C → Enable → reboot
+```
+
+### 2. Install Tailscale on the Pi
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+Note your Pi's Tailscale IP — you'll need it later:
+
+```bash
+tailscale ip -4
+```
+
+### 3. Install the daemon on the Pi
+
+```bash
 git clone https://github.com/oloapiu/airshell.git
 cd airshell
 pip install -r requirements.txt
@@ -97,11 +112,48 @@ sudo cp airshell.service /etc/systemd/system/
 sudo systemctl enable --now airshell
 ```
 
-The sensor starts sampling immediately with sensible defaults. To connect it to your agent, tell your agent:
+Verify it's running and reading the sensor:
 
-> "I set up an AirShell at `http://<tailscale-ip>:5000`. Configure it for a nursery."
+```bash
+sudo systemctl status airshell
+curl http://localhost:5000/status
+```
 
-The agent takes it from there — it'll push alarm thresholds, set up notifications, and start monitoring.
+You should see live CO₂, PM2.5, temperature, and humidity. The live dashboard is already included — no extra install needed. The daemon is now sampling and waiting to be configured.
+
+### 4. Install the skill on your agent
+
+The `airshell` skill gives your agent the domain knowledge to interpret readings, run the setup interview, and push config to the sensor.
+
+**Option A — via ClawHub (recommended):**
+
+```bash
+clawhub install airshell
+```
+
+**Option B — manually:**
+
+```bash
+cp -r skill ~/.openclaw/workspace/skills/airshell
+```
+
+OpenClaw picks up new skills automatically. No restart needed.
+
+### 5. Connect the sensor to your agent
+
+Send your agent one message:
+
+> "I set up an AirShell sensor at `http://<PI_TAILSCALE_IP>:5000`. Set it up for me."
+
+Your agent will:
+1. Ask a few questions — what room, who uses it, where you are, how many alerts you want
+2. Suggest alarm thresholds with reasoning based on your occupants
+3. Push the config to the sensor — including its own webhook URL and token, so the sensor knows how to reach it
+4. Confirm everything is live
+
+The webhook is configured automatically. The agent knows its own endpoint and pushes it to the sensor during setup — you don't need to touch it.
+
+That's it. The sensor is now connected to your agent. When the air needs attention, your agent wakes up and tells you in plain language.
 
 ---
 
@@ -109,12 +161,13 @@ The agent takes it from there — it'll push alarm thresholds, set up notificati
 
 AirShell is designed to be used with an AI agent running the `airshell` skill. The skill gives the agent:
 
-- **Domain knowledge** — what readings mean, health thresholds for infants, ventilation advice
-- **Setup flow** — interview the user ("What room? Who sleeps there?"), translate answers into config
-- **Alarm interpretation** — decide whether a threshold crossing is worth mentioning right now
-- **Ongoing tuning** — user says "too many alerts" → agent adjusts
+- **Domain knowledge** — what readings mean, health thresholds by occupant type, ventilation advice
+- **Setup flow** — interviews you, translates answers into config, pushes it to the sensor
+- **Alarm interpretation** — decides whether a threshold crossing is worth mentioning right now
+- **Weather context** — checks outdoor air quality before suggesting you open a window
+- **Ongoing tuning** — "too many alerts" → agent adjusts
 
-The sensor identifies itself with a **skill hint** in every webhook message (`Use skill:airshell`), so the agent knows which knowledge to load. The sensor doesn't know what it's for — it just says "I exist, use this skill to understand me."
+The sensor identifies itself with a **skill hint** in every webhook (`Use skill:airshell`), so the agent knows which knowledge to load without being told.
 
 ---
 
@@ -142,73 +195,13 @@ All endpoints served over Tailscale only.
 | `GET` | `/status` | Uptime, last reading, sensor health |
 | `GET` | `/` | Live dashboard |
 
-**Outbound:** webhook POST to agent gateway on alarm raise, clear, and repeat.
-
-### Config
-
-The agent pushes config to the sensor. The sensor persists it to disk.
-
-```json
-{
-  "skill": "airshell",
-  "alarms": {
-    "co2_high": {
-      "measurand": "co2",
-      "operator": ">",
-      "raise": 800,
-      "clear": 700,
-      "smoothing_min": 5
-    },
-    "pm25_high": {
-      "measurand": "pm25",
-      "operator": ">",
-      "raise": 35.5,
-      "clear": 25,
-      "smoothing_min": 2
-    }
-  },
-  "notifications": {
-    "default": {
-      "on_raise": true,
-      "on_clear": true,
-      "repeat": {
-        "enabled": true,
-        "mode": "escalating",
-        "intervals_min": [30, 15, 10, 5]
-      }
-    },
-    "overrides": {
-      "co2_high": {
-        "agent_message": "Nursery CO₂ — check if window needs opening."
-      }
-    }
-  },
-  "gateway": {
-    "webhook_url": "http://localhost:3456/hooks/agent",
-    "token": "..."
-  }
-}
-```
-
-| Field | Description |
-|-------|-------------|
-| `measurand` | What to watch (`co2`, `pm25`, `temp`, `humidity`) |
-| `operator` | Comparison (`>`, `<`, `>=`, `<=`) |
-| `raise` | Threshold to trigger alarm |
-| `clear` | Threshold to clear (hysteresis prevents flapping) |
-| `smoothing_min` | Moving average window before evaluation |
-| `repeat.mode` | `constant` (fixed interval) or `escalating` (increasingly urgent) |
-| `agent_message` | Agent's note-to-self, included in the webhook |
-
-Notifications are decoupled from detection. The `default` block applies to all alarms; `overrides` merge on top by alarm name.
-
 ### Webhook Messages
 
-When an alarm fires, the sensor POSTs a natural-language message to the agent:
+When an alarm fires, the sensor POSTs to your agent:
 
-> AirShell alarm RAISED: co2_high — CO₂ > 800 ppm (smoothed: 805, raw: 823). Note: "Nursery CO₂ — check if window needs opening." Device: airshell-01 @ http://<PI_TAILSCALE_IP>:5000. Use skill:airshell.
+> AirShell alarm RAISED: co2_high — CO₂ > 800 ppm (smoothed: 805, raw: 823). Note: "Nursery CO₂ — check if window needs opening." Device: airshell-01 @ http://\<PI_TAILSCALE_IP\>:5000. Use skill:airshell.
 
-The device URL is included so the agent can pull `/readings` or `/status` for context. The agent decides whether to notify the user, and how.
+The device URL is included so the agent can pull `/readings` or `/status` for context.
 
 ### Storage
 
@@ -221,13 +214,13 @@ The device URL is included so the agent can pull `/readings` or `/status` for co
 
 ### Dashboard
 
-The sensor serves a live dashboard at `GET /`.
+The sensor serves a live dashboard at `GET /` — CO₂, PM2.5, temperature, and humidity charts with alarm thresholds. Auto-refreshes every 30 seconds. Mobile-friendly.
 
-- **uPlot** charts — CO₂, PM2.5, temperature, humidity
-- Auto-refreshes every 30 seconds
-- Alarm thresholds shown as horizontal lines
-- Current values displayed prominently
-- Mobile-friendly — designed for glancing after an alert
+To view it, open a browser on any device connected to your Tailscale network and go to:
+
+```
+http://<PI_TAILSCALE_IP>:5000
+```
 
 ---
 
@@ -249,13 +242,6 @@ What's the next one?
 
 ---
 
-## Status
-
-- ✅ Pi Zero 2 W running, on Tailscale
-- ✅ SEN63C sensor wired and reading — CO2, PM, temp, humidity confirmed working
-- 🐢 Turtle enclosure: concept stage
-- ✅ Full loop working — sensor → agent → Telegram confirmed
-
 ## License
 
 MIT
@@ -263,5 +249,3 @@ MIT
 ## Contributing
 
 Issues and PRs welcome. If you build a feeler for a different sense, we'd love to hear about it.
-
-<!-- auto-updated -->
