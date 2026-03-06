@@ -90,7 +90,7 @@ That's it. Four wires.
 
 ```bash
 ssh pi@<tailscale-ip>
-git clone https://github.com/your-org/airshell.git
+git clone https://github.com/oloapiu/airshell.git
 cd airshell
 pip install -r requirements.txt
 sudo cp airshell.service /etc/systemd/system/
