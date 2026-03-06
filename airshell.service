@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /home/airshell/airshell/daemon.py
+ExecStart=/home/airshell/airshell/venv/bin/python /home/airshell/airshell/daemon.py
 WorkingDirectory=/home/airshell/airshell
 Restart=always
 RestartSec=10

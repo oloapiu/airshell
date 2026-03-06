@@ -107,7 +107,8 @@ tailscale ip -4
 ```bash
 git clone https://github.com/oloapiu/airshell.git
 cd airshell
-pip install -r requirements.txt
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
 sudo cp airshell.service /etc/systemd/system/
 sudo systemctl enable --now airshell
 ```
