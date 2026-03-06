@@ -1,3 +1,13 @@
+---
+name: airshell
+version: 1.0.0
+description: |
+  Agent playbook for the AirShell open-source air quality sensor (github.com/oloapiu/airshell).
+  Gives your agent domain knowledge about CO₂, PM2.5, temperature, and humidity — and a setup
+  flow to connect a Sensirion SEN63C + Raspberry Pi sensor to your agent via webhook.
+  The sensor wakes the agent when air quality needs attention. The agent decides whether to tell you.
+---
+
 # AirShell Skill 🐢
 
 Agent playbook for the AirShell air quality sensor.
