@@ -324,6 +324,17 @@
     return null;
   }
 
+  function rollingAvg(arr, window) {
+    // Return rolling average of last `window` non-null values
+    if (!arr || !window || window <= 1) return null;
+    var vals = [];
+    for (var i = arr.length - 1; i >= 0 && vals.length < window; i--) {
+      if (arr[i] != null) vals.push(arr[i]);
+    }
+    if (vals.length === 0) return null;
+    return vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
+  }
+
   function updateCards(data, alarmStates, alarmsCfg) {
     var cardDefs = [
       { key: "co2",      id: "card-co2",      valId: "val-co2",      smoothId: "smooth-co2",      fmt: function(v){return Math.round(v);} },
@@ -335,9 +346,10 @@
     for (var i = 0; i < cardDefs.length; i++) {
       var cd = cardDefs[i];
       var arr = data[cd.key];
-      var val = null;
-      // Find last non-null value
-      if (arr) {
+      var smoothWin = getSmoothing(alarmsCfg, cd.key);
+      // Use rolling average matching the alarm smoothing window; fall back to last raw value
+      var val = rollingAvg(arr, smoothWin);
+      if (val === null && arr) {
         for (var j = arr.length - 1; j >= 0; j--) {
           if (arr[j] != null) { val = arr[j]; break; }
         }
