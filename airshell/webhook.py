@@ -51,7 +51,7 @@ def send_webhook(
 
     payload = {
         "message": message,
-        "agentId": "main",   # route to your main agent
+        "agentId": "airshell",   # route to the dedicated AirShell agent
     }
     if deliver:
         payload["deliver"] = True
