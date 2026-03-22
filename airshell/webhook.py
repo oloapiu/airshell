@@ -26,16 +26,18 @@ def send_webhook(
     deliver: bool = True,
     channel: Optional[str] = None,
     to: Optional[str] = None,
+    agent_id: Optional[str] = None,
 ) -> int:
     """POST a message to the gateway /hooks/agent endpoint.
 
     Args:
-        url:     Full URL (e.g. https://<tailnet-host>/hooks/agent)
-        token:   Gateway hook token (sent as Authorization Bearer header)
-        message: The alarm/event message for the agent to process
-        deliver: If True, agent response is delivered to the messaging channel
-        channel: Delivery channel (e.g. "telegram"). Uses gateway default if None.
-        to:      Recipient ID (e.g. Telegram chat ID). Uses last recipient if None.
+        url:      Full URL (e.g. https://<tailnet-host>/hooks/agent)
+        token:    Gateway hook token (sent as Authorization Bearer header)
+        message:  The alarm/event message for the agent to process
+        deliver:  If True, agent response is delivered to the messaging channel
+        channel:  Delivery channel (e.g. "telegram"). Uses gateway default if None.
+        to:       Recipient ID (e.g. Telegram chat ID). Uses last recipient if None.
+        agent_id: OpenClaw agent to route to (e.g. "airshell"). Uses gateway default if None.
 
     Returns:
         HTTP status code, or 0 on connection failure.
@@ -49,10 +51,9 @@ def send_webhook(
         "Content-Type": "application/json",
     }
 
-    payload = {
-        "message": message,
-        "agentId": "airshell",   # route to the dedicated AirShell agent
-    }
+    payload: dict = {"message": message}
+    if agent_id:
+        payload["agentId"] = agent_id
     if deliver:
         payload["deliver"] = True
     if channel:
@@ -79,6 +80,7 @@ def send_webhook_async(
     deliver: bool = True,
     channel: Optional[str] = None,
     to: Optional[str] = None,
+    agent_id: Optional[str] = None,
     callback=None,
 ):
     """Send a webhook in a background thread (non-blocking).
@@ -90,11 +92,12 @@ def send_webhook_async(
         deliver:  Forward agent response to messaging channel
         channel:  Delivery channel override
         to:       Recipient ID override
+        agent_id: OpenClaw agent to route to
         callback: Optional callable(status_code) called after delivery
     """
     def _deliver():
         status = send_webhook(url, token, message, deliver=deliver,
-                              channel=channel, to=to)
+                              channel=channel, to=to, agent_id=agent_id)
         if callback:
             callback(status)
 
